@@ -42,7 +42,7 @@ export default function AppSidebar() {
                       }`}
                     >
                         <Gamepad2 className="h-4 w-4" />
-                        <span>My Games</span>
+                        <span>Games</span>
                     </Link>
 
                     <Link
