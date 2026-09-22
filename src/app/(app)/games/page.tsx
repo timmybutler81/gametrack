@@ -3,12 +3,14 @@
 import { useState } from "react"
 import { games } from "@/data/games"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 import {
   Gamepad2,
   MoreVertical,
   ChartNoAxesColumnIncreasing,
   ListFilter,
+  Pencil
 } from "lucide-react"
 
 function getStatusClasses(status: string) {
@@ -221,13 +223,19 @@ export default function GamesPage() {
                   {/* Actions */}
                   <td className="rounded-r-lg px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <Button size="icon">
-                        <ChartNoAxesColumnIncreasing className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button size="icon">
+                          <Link href={`/games/${game.id}`}>
+                            <ChartNoAxesColumnIncreasing className="h-4 w-4" />
+                          </Link>
+                        </Button>
 
-                      <Button size="icon" variant="outline">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
+                        <Button size="icon">
+                          <Link href={`/games/${game.id}/edit`}>
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   </td>
                 </tr>
@@ -344,7 +352,9 @@ export default function GamesPage() {
 
               <div className="flex gap-2">
                 <Button size="icon">
-                  <ChartNoAxesColumnIncreasing className="h-4 w-4" />
+                  <Link href={`/games/${game.id}`}>
+                    <ChartNoAxesColumnIncreasing className="h-4 w-4" />
+                  </Link>
                 </Button>
 
                 <Button size="icon" variant="outline">

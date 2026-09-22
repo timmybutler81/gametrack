@@ -20,8 +20,13 @@ export async function GET(request: NextRequest) {
       name: game.name,
       image: game.background_image,
       released: game.released,
+
       platforms: game.platforms?.map(
         (item: any) => item.platform.name
+      ) ?? [],
+
+      genres: game.genres?.map(
+        (genre: any) => genre.name
       ) ?? []
     }))
 

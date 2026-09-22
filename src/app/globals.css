@@ -142,6 +142,11 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
