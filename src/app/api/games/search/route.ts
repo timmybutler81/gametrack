@@ -21,13 +21,9 @@ export async function GET(request: NextRequest) {
       image: game.background_image,
       released: game.released,
 
-      platforms: game.platforms?.map(
-        (item: any) => item.platform.name
-      ) ?? [],
+      platforms: game.platforms?.map((item: any) => item.platform.name) ?? [],
 
-      genres: game.genres?.map(
-        (genre: any) => genre.name
-      ) ?? []
+      genres: game.genres?.map((genre: any) => genre.name) ?? [],
     }))
 
     return NextResponse.json(games)

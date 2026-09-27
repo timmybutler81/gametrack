@@ -1,9 +1,5 @@
 export type GameStatus =
-  | "Playing"
-  | "Backlog"
-  | "Completed"
-  | "On Hold"
-  | "Dropped"
+  "Playing" | "Backlog" | "Completed" | "On Hold" | "Dropped"
 
 export interface Game {
   id: number

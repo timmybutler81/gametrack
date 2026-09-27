@@ -10,7 +10,7 @@ import {
   MoreVertical,
   ChartNoAxesColumnIncreasing,
   ListFilter,
-  Pencil
+  Pencil,
 } from "lucide-react"
 
 function getStatusClasses(status: string) {
@@ -51,7 +51,7 @@ export default function GamesPage() {
           My Games
         </h1>
 
-        <p className="mt-2 text-text-secondary">
+        <p className="text-text-secondary mt-2">
           Track your games, playthroughs and achievements.
         </p>
       </div>
@@ -110,35 +110,35 @@ export default function GamesPage() {
 
       {/* Desktop Table */}
       <div className="hidden md:block">
-        <div className="overflow-hidden rounded-lg border border-border">
+        <div className="border-border overflow-hidden rounded-lg border">
           <table className="w-full border-separate border-spacing-y-1">
             <thead>
-              <tr className="border-b border-border">
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+              <tr className="border-border border-b">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Game
                 </th>
 
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Platform
                 </th>
 
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Genre
                 </th>
 
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Status
                 </th>
 
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Playthrough
                 </th>
 
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Date Added
                 </th>
 
-                <th className="px-4 py-4 text-left text-sm font-medium text-text-secondary">
+                <th className="text-text-secondary px-4 py-4 text-left text-sm font-medium">
                   Actions
                 </th>
               </tr>
@@ -154,18 +154,16 @@ export default function GamesPage() {
                         <img
                           src={game.image}
                           alt={`${game.title} cover`}
-                          className="h-16 w-12 rounded-md border border-border object-cover"
+                          className="border-border h-16 w-12 rounded-md border object-cover"
                         />
                       ) : (
-                        <div className="h-16 w-12 rounded-md border border-border bg-surface-light" />
+                        <div className="border-border bg-surface-light h-16 w-12 rounded-md border" />
                       )}
 
                       <div>
-                        <p className="font-medium">
-                          {game.title}
-                        </p>
+                        <p className="font-medium">{game.title}</p>
 
-                        <p className="text-sm text-text-secondary">
+                        <p className="text-text-secondary text-sm">
                           {game.developer}
                         </p>
                       </div>
@@ -181,9 +179,7 @@ export default function GamesPage() {
                   </td>
 
                   {/* Genre */}
-                  <td className="px-4 py-3">
-                    {game.genre}
-                  </td>
+                  <td className="px-4 py-3">{game.genre}</td>
 
                   {/* Status */}
                   <td className="px-4 py-3">
@@ -200,23 +196,19 @@ export default function GamesPage() {
                   <td className="px-4 py-3">
                     {game.playthroughNumber ? (
                       <div>
-                        <p className="font-medium">
-                          #{game.playthroughNumber}
-                        </p>
+                        <p className="font-medium">#{game.playthroughNumber}</p>
 
-                        <p className="text-sm text-text-secondary">
+                        <p className="text-text-secondary text-sm">
                           {game.hoursPlayed} hrs
                         </p>
                       </div>
                     ) : (
-                      <span className="text-text-secondary">
-                        —
-                      </span>
+                      <span className="text-text-secondary">—</span>
                     )}
                   </td>
 
                   {/* Date */}
-                  <td className="px-4 py-3 text-text-secondary">
+                  <td className="text-text-secondary px-4 py-3">
                     {game.dateAdded}
                   </td>
 
@@ -244,15 +236,13 @@ export default function GamesPage() {
           </table>
 
           {/* Desktop Pagination */}
-          <div className="flex items-center justify-between border-t border-border px-4 py-4">
-            <p className="text-sm text-text-secondary">
+          <div className="border-border flex items-center justify-between border-t px-4 py-4">
+            <p className="text-text-secondary text-sm">
               Showing 1 to 8 of 24 games
             </p>
 
             <div className="flex items-center gap-2">
-              <Button size="sm">
-                1
-              </Button>
+              <Button size="sm">1</Button>
 
               <Button size="sm" variant="outline">
                 2
@@ -275,7 +265,7 @@ export default function GamesPage() {
         {filteredGames.map((game) => (
           <div
             key={game.id}
-            className="rounded-lg border border-border bg-surface p-4"
+            className="border-border bg-surface rounded-lg border p-4"
           >
             {/* Top Section */}
             <div className="flex gap-3">
@@ -283,20 +273,16 @@ export default function GamesPage() {
                 <img
                   src={game.image}
                   alt={`${game.title} cover`}
-                  className="h-20 w-14 shrink-0 rounded-md border border-border object-cover"
+                  className="border-border h-20 w-14 shrink-0 rounded-md border object-cover"
                 />
               ) : (
-                <div className="h-20 w-14 shrink-0 rounded-md border border-border bg-surface-light" />
+                <div className="border-border bg-surface-light h-20 w-14 shrink-0 rounded-md border" />
               )}
 
               <div className="min-w-0 flex-1">
-                <h3 className="truncate font-semibold">
-                  {game.title}
-                </h3>
+                <h3 className="truncate font-semibold">{game.title}</h3>
 
-                <p className="text-sm text-text-secondary">
-                  {game.developer}
-                </p>
+                <p className="text-text-secondary text-sm">{game.developer}</p>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
                   <div className="flex items-center gap-1">
@@ -304,13 +290,9 @@ export default function GamesPage() {
                     <span>{game.platform}</span>
                   </div>
 
-                  <span className="text-text-secondary">
-                    •
-                  </span>
+                  <span className="text-text-secondary">•</span>
 
-                  <span>
-                    {game.genre}
-                  </span>
+                  <span>{game.genre}</span>
                 </div>
               </div>
             </div>
@@ -328,25 +310,21 @@ export default function GamesPage() {
               <div className="text-right text-sm">
                 {game.playthroughNumber ? (
                   <>
-                    <p className="font-medium">
-                      #{game.playthroughNumber}
-                    </p>
+                    <p className="font-medium">#{game.playthroughNumber}</p>
 
                     <p className="text-text-secondary">
                       {game.hoursPlayed} hrs
                     </p>
                   </>
                 ) : (
-                  <span className="text-text-secondary">
-                    —
-                  </span>
+                  <span className="text-text-secondary">—</span>
                 )}
               </div>
             </div>
 
             {/* Bottom Section */}
-            <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-              <span className="text-sm text-text-secondary">
+            <div className="border-border mt-4 flex items-center justify-between border-t pt-3">
+              <span className="text-text-secondary text-sm">
                 {game.dateAdded}
               </span>
 
@@ -367,14 +345,12 @@ export default function GamesPage() {
 
         {/* Mobile Pagination */}
         <div className="flex flex-col gap-3 pt-2">
-          <p className="text-center text-sm text-text-secondary">
+          <p className="text-text-secondary text-center text-sm">
             Showing 1 to 8 of 24 games
           </p>
 
           <div className="flex justify-center gap-2">
-            <Button size="sm">
-              1
-            </Button>
+            <Button size="sm">1</Button>
 
             <Button size="sm" variant="outline">
               2

@@ -1,5 +1,3 @@
 export default function AchievementsPage() {
-    return (
-        <h1>Achievements</h1>
-    )
+  return <h1>Achievements</h1>
 }

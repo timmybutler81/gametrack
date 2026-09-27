@@ -11,7 +11,8 @@ export const games: Game[] = [
     playthroughNumber: 2,
     hoursPlayed: 42,
     dateAdded: "May 10, 2025",
-    image: "https://media.rawg.io/media/games/b29/b294fdd866dcdb643e7bab370a552855.jpg",
+    image:
+      "https://media.rawg.io/media/games/b29/b294fdd866dcdb643e7bab370a552855.jpg",
   },
   {
     id: 2,
