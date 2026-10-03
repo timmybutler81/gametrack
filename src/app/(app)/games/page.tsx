@@ -153,11 +153,11 @@ export default function GamesPage() {
                       {game.image ? (
                         <img
                           src={game.image}
-                          alt={`${game.title} cover`}
-                          className="border-border h-16 w-12 rounded-md border object-cover"
+                          alt={game.title}
+                          className="h-12 w-9 rounded object-cover"
                         />
                       ) : (
-                        <div className="border-border bg-surface-light h-16 w-12 rounded-md border" />
+                        <div className="border-border bg-surface-light h-12 w-9 rounded border" />
                       )}
 
                       <div>

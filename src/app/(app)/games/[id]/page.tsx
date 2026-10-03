@@ -1,6 +1,7 @@
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
+import DeleteGameDialog from "@/components/delete-game-dialog"
 
 import {
   CalendarDays,
@@ -9,6 +10,18 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react"
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export default async function GameDetailsPage({
   params,
@@ -93,10 +106,7 @@ export default async function GameDetailsPage({
             <span>Edit Game</span>
           </Link>
 
-          <Button variant="destructive" className="px-4 whitespace-nowrap">
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Game
-          </Button>
+          <DeleteGameDialog />
         </div>
       </div>
 

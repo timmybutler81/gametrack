@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -54,6 +55,13 @@ export default function LoginPage() {
             <Button type="submit" className="w-full">
               Sign In
             </Button>
+
+            <p className="text-text-secondary text-center text-sm">
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="text-primary hover:underline">
+                Create Account
+              </Link>
+            </p>
           </form>
         </div>
       </section>

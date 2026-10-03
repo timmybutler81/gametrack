@@ -1,11 +1,10 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
-import Link from "next/link"
-
-import { ChevronLeft } from "lucide-react"
+import DeletePlaythroughDialog from "@/components/delete-playthrough-dialog"
 
 export default function EditPlaythroughPage() {
   const router = useRouter()
@@ -55,7 +54,7 @@ export default function EditPlaythroughPage() {
 
         <span>/</span>
 
-        <Link href="/games/1" className="hover:text-text-primary">
+        <Link href={`/games/${gameId}`} className="hover:text-text-primary">
           Elden Ring
         </Link>
 
@@ -104,6 +103,7 @@ export default function EditPlaythroughPage() {
         <div className="grid gap-8 lg:grid-cols-2">
           {/* Left Column */}
           <div className="space-y-6">
+            {/* Status */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
 
@@ -113,12 +113,16 @@ export default function EditPlaythroughPage() {
                 className="border-border bg-background w-full rounded-md border px-3 py-2"
               >
                 <option value="Playing">Playing</option>
+
                 <option value="Completed">Completed</option>
+
                 <option value="On Hold">On Hold</option>
+
                 <option value="Dropped">Dropped</option>
               </select>
             </div>
 
+            {/* Dates */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Date Started</label>
@@ -142,132 +146,146 @@ export default function EditPlaythroughPage() {
                 />
               </div>
             </div>
+
+            {/* Hours Played */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Hours Played</label>
+
+              <input
+                type="number"
+                min="0"
+                value={hoursPlayed}
+                onChange={(event) => setHoursPlayed(event.target.value)}
+                className="border-border bg-background w-full rounded-md border px-3 py-2"
+              />
+            </div>
+
+            {/* Rating */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Rating</label>
+
+              <div className="flex gap-1 text-2xl">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    className="transition hover:scale-110"
+                    aria-label={`Rate ${star} stars`}
+                  >
+                    {rating >= star ? "★" : "☆"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Hours Played</label>
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* Achievements Toggle */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-medium">Achievements Supported</p>
 
-            <input
-              type="number"
-              value={hoursPlayed}
-              onChange={(event) => setHoursPlayed(event.target.value)}
-              className="border-border bg-background w-full rounded-md border px-3 py-2"
-            />
-          </div>
+                <p className="text-text-secondary text-sm">
+                  Track achievement progress for this playthrough.
+                </p>
+              </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Rating</label>
+              <button
+                type="button"
+                onClick={() => setAchievementsSupported(!achievementsSupported)}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+                  achievementsSupported ? "bg-primary" : "bg-background"
+                }`}
+                aria-label="Toggle achievement tracking"
+              >
+                <span
+                  className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
+                    achievementsSupported ? "right-1" : "left-1"
+                  }`}
+                />
+              </button>
+            </div>
 
-            <div className="flex gap-1 text-2xl">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="transition hover:scale-110"
-                  aria-label={`Rate ${star} stars`}
-                >
-                  {rating >= star ? "★" : "☆"}
-                </button>
-              ))}
+            {/* Achievement Counts */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Completed</label>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={achievementsCompleted}
+                  onChange={(event) =>
+                    setAchievementsCompleted(event.target.value)
+                  }
+                  disabled={!achievementsSupported}
+                  className="border-border bg-background w-full rounded-md border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Total</label>
+
+                <input
+                  type="number"
+                  min="0"
+                  value={achievementsTotal}
+                  onChange={(event) => setAchievementsTotal(event.target.value)}
+                  disabled={!achievementsSupported}
+                  className="border-border bg-background w-full rounded-md border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Notes</label>
+
+                <span className="text-text-secondary text-xs">
+                  {notes.length}/500
+                </span>
+              </div>
+
+              <textarea
+                rows={8}
+                maxLength={500}
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                className="border-border bg-background w-full resize-none rounded-md border px-3 py-2"
+                placeholder="Add notes about this playthrough..."
+              />
             </div>
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Achievements Supported</p>
+        {/* Actions */}
+        <div className="border-border mt-8 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <DeletePlaythroughDialog />
 
-              <p className="text-text-secondary text-sm">
-                Track achievement progress for this playthrough.
-              </p>
-            </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => router.push(`/games/${gameId}`)}
+              className="border-border hover:bg-surface-light rounded-md border px-4 py-2"
+            >
+              Cancel
+            </button>
 
             <button
               type="button"
-              onClick={() => setAchievementsSupported(!achievementsSupported)}
-              className={`relative h-6 w-11 rounded-full transition ${
-                achievementsSupported ? "bg-primary" : "bg-surface-light"
-              }`}
-              aria-label="Toggle achievement tracking"
+              onClick={handleUpdatePlaythrough}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 font-medium"
             >
-              <span
-                className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
-                  achievementsSupported ? "right-1" : "left-1"
-                }`}
-              />
+              Update Playthrough
             </button>
           </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Completed</label>
-
-              <input
-                type="number"
-                value={achievementsCompleted}
-                onChange={(event) =>
-                  setAchievementsCompleted(event.target.value)
-                }
-                disabled={!achievementsSupported}
-                className="border-border bg-background w-full rounded-md border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Total</label>
-
-              <input
-                type="number"
-                value={achievementsTotal}
-                onChange={(event) => setAchievementsTotal(event.target.value)}
-                disabled={!achievementsSupported}
-                className="border-border bg-background w-full rounded-md border px-3 py-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Notes</label>
-
-              <span className="text-text-secondary text-xs">
-                {notes.length}/500
-              </span>
-            </div>
-
-            <textarea
-              rows={8}
-              maxLength={500}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="border-border bg-background w-full resize-none rounded-md border px-3 py-2"
-              placeholder="Add notes about this playthrough..."
-            />
-          </div>
-        </div>
-
-        <div className="border-border mt-8 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={() => router.push(`/games/${gameId}`)}
-            className="border-border hover:bg-surface-light rounded-md border px-4 py-2"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleUpdatePlaythrough}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 font-medium"
-          >
-            Update Playthrough
-          </button>
         </div>
       </section>
 
+      {/* Info */}
       <div className="border-border bg-surface-light rounded-xl border p-4">
         <h3 className="font-medium">Playthroughs are independent</h3>
 

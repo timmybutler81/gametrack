@@ -1,6 +1,103 @@
+"use client"
+
+import { useState } from "react"
+
+const playHistory = [
+  {
+    game: "Elden Ring",
+    platform: "PS5",
+    genre: "Action RPG",
+    activity: "Played 4 hours",
+    date: "Sep 26, 2026",
+  },
+  {
+    game: "Final Fantasy VII Rebirth",
+    platform: "PS5",
+    genre: "RPG",
+    activity: "Played 3 hours",
+    date: "Sep 24, 2026",
+  },
+  {
+    game: "The Witcher 3",
+    platform: "PC",
+    genre: "RPG",
+    activity: "Completed playthrough",
+    date: "Sep 21, 2026",
+  },
+  {
+    game: "Baldur's Gate 3",
+    platform: "PC",
+    genre: "RPG",
+    activity: "Played 2 hours",
+    date: "Sep 18, 2026",
+  },
+]
+
+const monthlyPlayTime = [
+  { label: "May", value: 42 },
+  { label: "Jun", value: 58 },
+  { label: "Jul", value: 36 },
+  { label: "Aug", value: 64 },
+  { label: "Sep", value: 30 },
+]
+
+const weeklyPlayTime = [
+  { label: "Week 1", value: 8 },
+  { label: "Week 2", value: 14 },
+  { label: "Week 3", value: 6 },
+  { label: "Week 4", value: 11 },
+]
+
+const dateRangeStats = {
+  "Last 30 Days": {
+    totalPlayTime: 30,
+    gamesPlayed: 4,
+    gamesCompleted: 1,
+    averageRating: 4.7,
+  },
+  "Last 90 Days": {
+    totalPlayTime: 94,
+    gamesPlayed: 7,
+    gamesCompleted: 2,
+    averageRating: 4.6,
+  },
+  "This Year": {
+    totalPlayTime: 230,
+    gamesPlayed: 12,
+    gamesCompleted: 4,
+    averageRating: 4.6,
+  },
+  "All Time": {
+    totalPlayTime: 412,
+    gamesPlayed: 24,
+    gamesCompleted: 8,
+    averageRating: 4.5,
+  },
+}
+
 export default function HistoryPage() {
+  const [dateRange, setDateRange] = useState("Last 30 Days")
+  const [groupBy, setGroupBy] = useState("Month")
+  const [selectedGame, setSelectedGame] = useState("All Games")
+  const [selectedGenre, setSelectedGenre] = useState("All Genres")
+
+  const stats = dateRangeStats[dateRange as keyof typeof dateRangeStats]
+
+  const filteredHistory = playHistory.filter((entry) => {
+    const matchesGame =
+      selectedGame === "All Games" || entry.game === selectedGame
+
+    const matchesGenre =
+      selectedGenre === "All Genres" || entry.genre === selectedGenre
+
+    return matchesGame && matchesGenre
+  })
+
+  const chartData = groupBy === "Week" ? weeklyPlayTime : monthlyPlayTime
+
   return (
     <div className="space-y-6">
+      {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold">History & Analytics</h1>
 
@@ -9,12 +106,17 @@ export default function HistoryPage() {
         </p>
       </div>
 
+      {/* Filters */}
       <section className="border-border bg-surface rounded-xl border p-6">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Date Range</label>
 
-            <select className="border-border bg-background w-full rounded-md border px-3 py-2">
+            <select
+              value={dateRange}
+              onChange={(event) => setDateRange(event.target.value)}
+              className="border-border bg-background w-full rounded-md border px-3 py-2"
+            >
               <option>Last 30 Days</option>
               <option>Last 90 Days</option>
               <option>This Year</option>
@@ -25,65 +127,78 @@ export default function HistoryPage() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Group By</label>
 
-            <select className="border-border bg-background w-full rounded-md border px-3 py-2">
+            <select
+              value={groupBy}
+              onChange={(event) => setGroupBy(event.target.value)}
+              className="border-border bg-background w-full rounded-md border px-3 py-2"
+            >
               <option>Month</option>
               <option>Week</option>
-              <option>Game</option>
-              <option>Genre</option>
             </select>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Game</label>
 
-            <select className="border-border bg-background w-full rounded-md border px-3 py-2">
+            <select
+              value={selectedGame}
+              onChange={(event) => setSelectedGame(event.target.value)}
+              className="border-border bg-background w-full rounded-md border px-3 py-2"
+            >
               <option>All Games</option>
               <option>Elden Ring</option>
               <option>The Witcher 3</option>
               <option>Final Fantasy VII Rebirth</option>
+              <option>Baldur&apos;s Gate 3</option>
             </select>
           </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium">Genre</label>
 
-            <select className="border-border bg-background w-full rounded-md border px-3 py-2">
+            <select
+              value={selectedGenre}
+              onChange={(event) => setSelectedGenre(event.target.value)}
+              className="border-border bg-background w-full rounded-md border px-3 py-2"
+            >
               <option>All Genres</option>
               <option>Action RPG</option>
               <option>RPG</option>
-              <option>Action Adventure</option>
             </select>
           </div>
         </div>
       </section>
 
+      {/* Summary Cards */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Total Play Time</p>
 
-          <p className="mt-2 text-3xl font-bold">230 hrs</p>
+          <p className="mt-2 text-3xl font-bold">{stats.totalPlayTime} hrs</p>
         </div>
 
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Games Played</p>
 
-          <p className="mt-2 text-3xl font-bold">12</p>
+          <p className="mt-2 text-3xl font-bold">{stats.gamesPlayed}</p>
         </div>
 
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Games Completed</p>
 
-          <p className="mt-2 text-3xl font-bold">4</p>
+          <p className="mt-2 text-3xl font-bold">{stats.gamesCompleted}</p>
         </div>
 
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Average Rating</p>
 
-          <p className="mt-2 text-3xl font-bold">4.6</p>
+          <p className="mt-2 text-3xl font-bold">{stats.averageRating}</p>
         </div>
       </section>
 
+      {/* Main Analytics */}
       <section className="grid gap-6 xl:grid-cols-2">
+        {/* Play Time Over Time */}
         <div className="border-border bg-surface rounded-xl border p-6">
           <div className="mb-6">
             <h2 className="text-lg font-semibold">Play Time Over Time</h2>
@@ -94,13 +209,7 @@ export default function HistoryPage() {
           </div>
 
           <div className="flex h-72 items-end gap-4">
-            {[
-              { label: "May", value: 42 },
-              { label: "Jun", value: 58 },
-              { label: "Jul", value: 36 },
-              { label: "Aug", value: 64 },
-              { label: "Sep", value: 30 },
-            ].map((item) => (
+            {chartData.map((item) => (
               <div
                 key={item.label}
                 className="flex flex-1 flex-col items-center justify-end gap-2"
@@ -124,6 +233,7 @@ export default function HistoryPage() {
           </div>
         </div>
 
+        {/* Games by Status */}
         <div className="border-border bg-surface rounded-xl border p-6">
           <div className="mb-6">
             <h2 className="text-lg font-semibold">Games by Status</h2>
@@ -144,6 +254,7 @@ export default function HistoryPage() {
               <div key={item.label} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span>{item.label}</span>
+
                   <span className="text-text-secondary">{item.value}</span>
                 </div>
 
@@ -161,6 +272,7 @@ export default function HistoryPage() {
         </div>
       </section>
 
+      {/* Bottom Analytics */}
       <section className="grid gap-6 xl:grid-cols-3">
         {/* Top Genres */}
         <div className="border-border bg-surface rounded-xl border p-6">
@@ -211,49 +323,30 @@ export default function HistoryPage() {
           </div>
 
           <div className="space-y-4">
-            {[
-              {
-                game: "Elden Ring",
-                platform: "PS5",
-                activity: "Played 4 hours",
-                date: "Sep 26, 2026",
-              },
-              {
-                game: "Final Fantasy VII Rebirth",
-                platform: "PS5",
-                activity: "Played 3 hours",
-                date: "Sep 24, 2026",
-              },
-              {
-                game: "The Witcher 3",
-                platform: "PC",
-                activity: "Completed playthrough",
-                date: "Sep 21, 2026",
-              },
-              {
-                game: "Baldur's Gate 3",
-                platform: "PC",
-                activity: "Played 2 hours",
-                date: "Sep 18, 2026",
-              },
-            ].map((entry) => (
-              <div
-                key={`${entry.game}-${entry.date}`}
-                className="border-border bg-background flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div>
-                  <p className="font-medium">{entry.game}</p>
-
-                  <p className="text-text-secondary mt-1 text-sm">
-                    {entry.platform} · {entry.activity}
-                  </p>
-                </div>
-
-                <span className="text-text-secondary text-sm">
-                  {entry.date}
-                </span>
+            {filteredHistory.length === 0 ? (
+              <div className="border-border bg-background text-text-secondary rounded-lg border p-6 text-center text-sm">
+                No play history matches the selected filters.
               </div>
-            ))}
+            ) : (
+              filteredHistory.map((entry) => (
+                <div
+                  key={`${entry.game}-${entry.date}`}
+                  className="border-border bg-background flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <p className="font-medium">{entry.game}</p>
+
+                    <p className="text-text-secondary mt-1 text-sm">
+                      {entry.platform} · {entry.activity}
+                    </p>
+                  </div>
+
+                  <span className="text-text-secondary text-sm">
+                    {entry.date}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </section>
