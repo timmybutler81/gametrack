@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,22 +16,37 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [error, setError] = useState<String | null>(null)
+  const [message, setMessage] = useState<String | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  function handleCreateAccount(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateAccount(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
+    setMessage(null)
 
     if (password !== confirmPassword) {
       return
     }
 
-    console.log({
+    setLoading(true)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signUp({
       email,
       password,
-      acceptedTerms,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     })
 
-    // Temporary frontend-only behavior
-    router.push("/dashboard")
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
+
+    setMessage("Check your email to confirm your account.")
+    setLoading(false)
   }
 
   return (
@@ -107,8 +123,16 @@ export default function RegisterPage() {
               <span>I agree to the Terms of Service and Privacy Policy.</span>
             </label>
 
-            <Button type="submit" className="w-full" disabled={!acceptedTerms}>
-              Create Account
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            {message && <p className="text-sm text-green-500">{message}</p>}
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!acceptedTerms || loading}
+            >
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
 
             <div className="flex items-center gap-3 py-2">

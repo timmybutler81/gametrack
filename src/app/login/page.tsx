@@ -4,15 +4,51 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
 import Link from "next/link"
 
 export default function LoginPage() {
   const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
+    setLoading(true)
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
+      return
+    }
 
     router.push("/dashboard")
+    router.refresh()
+  }
+
+  async function handleGoogleLogin() {
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+
+    if (error) {
+      setError(error.message)
+    }
   }
 
   return (
@@ -40,7 +76,13 @@ export default function LoginPage() {
           <form className="mt-8 space-y-4" onSubmit={handleLogin}>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@example.com" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -49,11 +91,30 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 placeholder="Enter your password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              Sign In
+            {error && <p className="text-sm text-red-500">{error}</p>}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Signing In..." : "Sign In"}
+            </Button>
+
+            <div className="flex items-center gap-3 py-2">
+              <div className="bg-border h-px flex-1" />
+              <span className="text-text-secondary text-xs">or</span>
+              <div className="bg-border h-px flex-1" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGoogleLogin}
+            >
+              Continue with Google
             </Button>
 
             <p className="text-text-secondary text-center text-sm">

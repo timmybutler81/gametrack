@@ -1,17 +1,26 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
 import { useState } from "react"
-
 import { LogOut, Menu } from "lucide-react"
-
+import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-
 import { navItems } from "@/lib/navigation"
+import { create } from "domain"
+import App from "next/app"
 
-export default function AppSidebar() {
+type AppSidebarProps = {
+  name: string
+  email: string
+  initials: string
+}
+
+export default function AppSidebar({ name, email, initials }: AppSidebarProps) {
+  const [mobileMenueOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   function isNavItemActive(href: string) {
     if (href === "/games") {
@@ -21,7 +30,20 @@ export default function AppSidebar() {
     return pathname.startsWith(href)
   }
 
-  const [mobileMenueOpen, setMobileMenuOpen] = useState(false)
+  async function handleLogout() {
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signOut()
+
+    if (error) {
+      console.error("Logout failed:", error.message)
+      return
+    }
+
+    setMobileMenuOpen(false)
+    router.replace("/login")
+    router.refresh()
+  }
 
   return (
     <>
@@ -55,25 +77,29 @@ export default function AppSidebar() {
           </div>
 
           <div className="mt-auto space-y-4">
-            <Link
-              href="/"
+            <Button
+              type="button"
+              onClick={handleLogout}
               className="text-text-secondary hover:bg-surface-light hover:text-text-primary flex w-full items-center gap-3 rounded-md px-3 py-2"
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>
-            </Link>
+            </Button>
 
             <div className="border-border bg-surface-light rounded-lg border p-4">
               <div className="flex items-center gap-3">
-                <div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full font-semibold">
-                  TB
+                <div className="bg-primary text-primary-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-semibold">
+                  {initials}
                 </div>
 
-                <div className="min-w-0">
-                  <p className="font-medium">Tim Butler</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium">{name}</p>
 
-                  <p className="text-text-secondary truncate text-sm">
-                    tim@butler.com
+                  <p
+                    className="text-text-secondary truncate text-sm"
+                    title={email}
+                  >
+                    {email}
                   </p>
                 </div>
               </div>
@@ -126,26 +152,29 @@ export default function AppSidebar() {
               </div>
 
               <div className="mt-auto space-y-4 pb-6">
-                <Link
-                  href="/"
-                  onClick={() => setMobileMenuOpen(false)}
+                <Button
+                  type="button"
+                  onClick={handleLogout}
                   className="text-text-secondary hover:bg-surface-light hover:text-text-primary flex w-full items-center gap-3 rounded-md px-3 py-2"
                 >
                   <LogOut className="h-4 w-4" />
                   <span>Logout</span>
-                </Link>
+                </Button>
 
                 <div className="border-border bg-surface-light rounded-lg border p-4">
                   <div className="flex items-center gap-3">
-                    <div className="bg-primary text-primary-foreground flex h-10 w-10 items-center justify-center rounded-full font-semibold">
-                      TB
+                    <div className="bg-primary text-primary-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-semibold">
+                      {initials}
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="font-medium">Tim Butler</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{name}</p>
 
-                      <p className="text-text-secondary truncate text-sm">
-                        tim@butler.com
+                      <p
+                        className="text-text-secondary truncate text-sm"
+                        title={email}
+                      >
+                        {email}
                       </p>
                     </div>
                   </div>
