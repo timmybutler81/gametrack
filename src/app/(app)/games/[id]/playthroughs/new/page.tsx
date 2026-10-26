@@ -1,14 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
+type GameData = {
+  id: string
+  genre: string | null
+  dateAdded: string
+
+  game: {
+    title: string
+    imageUrl: string | null
+  }
+
+  platforms: {
+    platform: string
+  }[]
+}
+
+const statusMap: Record<string, string> = {
+  Playing: "PLAYING",
+  Completed: "COMPLETED",
+  "On Hold": "ON_HOLD",
+  Dropped: "DROPPED",
+}
+
 export default function NewPlaythroughPage() {
   const router = useRouter()
-  const params = useParams()
+  const params = useParams<{ id: string }>()
 
   const gameId = params.id
+
+  const [gameData, setGameData] = useState<GameData | null>(null)
 
   const [status, setStatus] = useState("Playing")
   const [dateStarted, setDateStarted] = useState("")
@@ -17,32 +41,108 @@ export default function NewPlaythroughPage() {
   const [rating, setRating] = useState(0)
 
   const [achievementsSupported, setAchievementsSupported] = useState(true)
+
   const [achievementsCompleted, setAchievementsCompleted] = useState("0")
+
   const [achievementsTotal, setAchievementsTotal] = useState("0")
 
   const [notes, setNotes] = useState("")
 
-  function handleCreatePlaythrough() {
-    const newPlaythrough = {
-      status,
-      dateStarted,
-      dateEnded,
-      hoursPlayed,
-      rating,
-      achievementsSupported,
-      achievementsCompleted,
-      achievementsTotal,
-      notes,
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadGame() {
+      try {
+        const response = await fetch(`/api/games/${gameId}`)
+
+        if (!response.ok) {
+          throw new Error("Failed to load game")
+        }
+
+        const data: GameData = await response.json()
+
+        setGameData(data)
+      } catch (error) {
+        console.error("Failed to load game:", error)
+        setError("Failed to load game.")
+      } finally {
+        setIsLoading(false)
+      }
     }
 
-    console.log("New Playthrough:", newPlaythrough)
+    loadGame()
+  }, [gameId])
 
-    router.push(`/games/${gameId}`)
+  async function handleCreatePlaythrough() {
+    setIsSaving(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/games/${gameId}/playthroughs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: statusMap[status],
+          dateStarted,
+          dateEnded,
+          hoursPlayed,
+          rating,
+          achievementsSupported,
+          achievementsCompleted,
+          achievementsTotal,
+          notes,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+
+        throw new Error(data.error ?? "Failed to create playthrough")
+      }
+
+      router.push(`/games/${gameId}`)
+      router.refresh()
+    } catch (error) {
+      console.error("Create playthrough failed:", error)
+
+      setError(
+        error instanceof Error ? error.message : "Failed to create playthrough."
+      )
+    } finally {
+      setIsSaving(false)
+    }
   }
+
+  if (isLoading) {
+    return <div className="text-text-secondary">Loading game...</div>
+  }
+
+  if (!gameData) {
+    return (
+      <div className="space-y-4">
+        <p className="text-red-400">{error ?? "Game not found."}</p>
+
+        <Link href="/games" className="text-primary hover:underline">
+          Return to Games
+        </Link>
+      </div>
+    )
+  }
+
+  const platform = gameData.platforms[0]?.platform ?? "No platform"
+
+  const addedDate = new Date(gameData.dateAdded).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
       <div className="text-text-secondary flex flex-wrap items-center gap-2 text-sm">
         <Link href="/games" className="hover:text-text-primary">
           Games
@@ -51,7 +151,7 @@ export default function NewPlaythroughPage() {
         <span>/</span>
 
         <Link href={`/games/${gameId}`} className="hover:text-text-primary">
-          Elden Ring
+          {gameData.game.title}
         </Link>
 
         <span>/</span>
@@ -59,30 +159,34 @@ export default function NewPlaythroughPage() {
         <span className="text-text-primary">New Playthrough</span>
       </div>
 
-      {/* Game Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <img
-          src="https://media.rawg.io/media/games/b29/b294fdd866dcdb643e7bab370a552855.jpg"
-          alt="Elden Ring"
-          className="h-28 w-20 rounded-md object-cover"
-        />
+        {gameData.game.imageUrl ? (
+          <img
+            src={gameData.game.imageUrl}
+            alt={gameData.game.title}
+            className="h-28 w-20 rounded-md object-cover"
+          />
+        ) : (
+          <div className="bg-surface-light h-28 w-20 rounded-md" />
+        )}
 
         <div>
           <h1 className="text-3xl font-bold">New Playthrough</h1>
 
           <p className="text-text-secondary mt-1">
-            Create a new playthrough for this game.
+            Create a new playthrough for {gameData.game.title}.
           </p>
 
           <div className="text-text-secondary mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <span>PS5</span>
-            <span>Action RPG</span>
-            <span>Added May 10, 2025</span>
+            <span>{platform}</span>
+
+            <span>{gameData.genre ?? "No genre"}</span>
+
+            <span>Added {addedDate}</span>
           </div>
         </div>
       </div>
 
-      {/* Playthrough Details */}
       <section className="border-border bg-surface rounded-xl border p-6">
         <div className="mb-6">
           <h2 className="text-xl font-semibold">Playthrough Details</h2>
@@ -93,7 +197,6 @@ export default function NewPlaythroughPage() {
         </div>
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Left Column */}
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
@@ -104,8 +207,11 @@ export default function NewPlaythroughPage() {
                 className="border-border bg-background w-full rounded-md border px-3 py-2"
               >
                 <option value="Playing">Playing</option>
+
                 <option value="Completed">Completed</option>
+
                 <option value="On Hold">On Hold</option>
+
                 <option value="Dropped">Dropped</option>
               </select>
             </div>
@@ -140,6 +246,7 @@ export default function NewPlaythroughPage() {
               <input
                 type="number"
                 min="0"
+                step="0.25"
                 value={hoursPlayed}
                 onChange={(event) => setHoursPlayed(event.target.value)}
                 className="border-border bg-background w-full rounded-md border px-3 py-2"
@@ -165,7 +272,6 @@ export default function NewPlaythroughPage() {
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -243,6 +349,8 @@ export default function NewPlaythroughPage() {
           </div>
         </div>
 
+        {error && <p className="mt-6 text-sm text-red-400">{error}</p>}
+
         <div className="border-border mt-8 flex flex-col gap-3 border-t pt-6 sm:flex-row sm:justify-end">
           <button
             type="button"
@@ -255,14 +363,14 @@ export default function NewPlaythroughPage() {
           <button
             type="button"
             onClick={handleCreatePlaythrough}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 font-medium"
+            disabled={isSaving}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 font-medium disabled:opacity-50"
           >
-            Create Playthrough
+            {isSaving ? "Creating..." : "Create Playthrough"}
           </button>
         </div>
       </section>
 
-      {/* Info */}
       <div className="border-border bg-surface-light rounded-xl border p-4">
         <h3 className="font-medium">Playthroughs are independent</h3>
 

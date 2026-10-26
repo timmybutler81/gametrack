@@ -1,37 +1,47 @@
 "use client"
 
-import { use, useState } from "react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { games } from "@/data/games"
 
 export default function AddGamePage() {
+  const router = useRouter()
+
   const [searchTerm, setSearchTerm] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedGame, setSelectedGame] = useState<any | null>(null)
+
   const [platform, setPlatform] = useState("")
   const [genre, setGenre] = useState("")
   const [status, setStatus] = useState("Backlog")
+
   const [dateAdded, setDateAdded] = useState(
     new Date().toISOString().split("T")[0]
   )
+
   const [playthroughStatus, setPlaythroughStatus] = useState("Playing")
+
   const [dateStarted, setDateStarted] = useState("")
   const [dateEnded, setDateEnded] = useState("")
   const [hoursPlayed, setHoursPlayed] = useState("0")
-  const [rating, setRating] = useState("0")
+  const [rating, setRating] = useState(0)
+
   const [achievementsSupported, setAchievementsSupported] = useState(true)
+
   const [achievementsCompleted, setAchievementsCompleted] = useState("0")
+
   const [achievementsTotal, setAchievementsTotal] = useState("0")
+
   const [notes, setNotes] = useState("")
+
   const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleSearch() {
-    console.log("Searching for:", searchTerm)
-
     if (!searchTerm.trim()) {
       return
     }
@@ -44,16 +54,14 @@ export default function AddGamePage() {
       )
 
       if (!response.ok) {
-        throw new Error("Search Failed")
+        throw new Error("Search failed")
       }
 
       const data = await response.json()
 
-      console.log("RAWG response:", data)
-
       setSearchResults(data)
     } catch (error) {
-      console.error(error)
+      console.error("Game search failed:", error)
     } finally {
       setIsSearching(false)
     }
@@ -70,31 +78,105 @@ export default function AddGamePage() {
   }
 
   async function handleSaveGame() {
+    if (!selectedGame || !platform) {
+      return
+    }
+
     setIsSaving(true)
+    setError(null)
+
+    const gameStatusMap: Record<string, string> = {
+      Playing: "PLAYING",
+      Backlog: "BACKLOG",
+      Completed: "COMPLETED",
+      "On Hold": "ON_HOLD",
+      Dropped: "DROPPED",
+    }
+
+    const playthroughStatusMap: Record<string, string> = {
+      Playing: "PLAYING",
+      Completed: "COMPLETED",
+      "On Hold": "ON_HOLD",
+      Dropped: "DROPPED",
+    }
 
     try {
-      console.log({
-        game: {
-          id: selectedGame?.id,
-          title: selectedGame?.name,
-          image: selectedGame?.image,
-          platform,
-          genre,
-          status,
+      // Save the game first
+      const gameResponse = await fetch("/api/games", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rawgId: selectedGame.id,
+          title: selectedGame.name,
+          developer: selectedGame.developer ?? null,
+          imageUrl: selectedGame.image ?? null,
+          releaseDate: selectedGame.released ?? null,
+          genre: genre || null,
+          status: gameStatusMap[status],
           dateAdded,
-        },
-        playthrough: {
-          status: playthroughStatus,
-          dateStarted,
-          dateEnded,
-          hoursPlayed,
-          rating,
-          achievementsSupported,
-          achievementsCompleted,
-          achievementsTotal,
-          notes,
-        },
+          platforms: [platform],
+        }),
       })
+
+      if (!gameResponse.ok) {
+        const data = await gameResponse.json()
+
+        throw new Error(data.error ?? "Failed to save game")
+      }
+
+      const savedGame = await gameResponse.json()
+
+      // Only create the optional playthrough when the user entered
+      // meaningful playthrough information.
+      const shouldCreatePlaythrough =
+        dateStarted !== "" ||
+        dateEnded !== "" ||
+        Number(hoursPlayed) > 0 ||
+        rating > 0 ||
+        Number(achievementsCompleted) > 0 ||
+        Number(achievementsTotal) > 0 ||
+        notes.trim() !== ""
+
+      if (shouldCreatePlaythrough) {
+        const playthroughResponse = await fetch(
+          `/api/games/${savedGame.id}/playthroughs`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              status: playthroughStatusMap[playthroughStatus],
+              dateStarted,
+              dateEnded,
+              hoursPlayed,
+              rating,
+              achievementsSupported,
+              achievementsCompleted,
+              achievementsTotal,
+              notes,
+            }),
+          }
+        )
+
+        if (!playthroughResponse.ok) {
+          const data = await playthroughResponse.json()
+
+          throw new Error(
+            data.error ??
+              "Game was saved, but the playthrough could not be saved."
+          )
+        }
+      }
+
+      router.push(`/games/${savedGame.id}`)
+      router.refresh()
+    } catch (error) {
+      console.error("Save game failed:", error)
+
+      setError(error instanceof Error ? error.message : "Failed to save game.")
     } finally {
       setIsSaving(false)
     }
@@ -108,11 +190,13 @@ export default function AddGamePage() {
         </h1>
 
         <p className="text-text-secondary mt-2">
-          Add a new game to your library and create your first playthrough.
+          Add a new game to your library and optionally create your first
+          playthrough.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Game Details */}
         <section className="border-border bg-surface rounded-lg border p-4 md:p-6">
           <div className="flex items-start gap-3">
             <div className="bg-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold">
@@ -203,28 +287,28 @@ export default function AddGamePage() {
                 </div>
               </div>
             )}
+          </div>
 
-            <div className="mt-6 space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="platform">
-                  Platform <span className="text-red-500">*</span>
-                </Label>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="platform">
+                Platform <span className="text-red-500">*</span>
+              </Label>
 
-                <select
-                  id="platform"
-                  value={platform}
-                  onChange={(event) => setPlatform(event.target.value)}
-                  className="border-border bg-background w-full rounded-md border px-3 py-2"
-                >
-                  <option value="">Select Platform</option>
+              <select
+                id="platform"
+                value={platform}
+                onChange={(event) => setPlatform(event.target.value)}
+                className="border-border bg-background w-full rounded-md border px-3 py-2"
+              >
+                <option value="">Select Platform</option>
 
-                  {selectedGame?.platforms?.map((gamePlatform: string) => (
-                    <option key={gamePlatform} value={gamePlatform}>
-                      {gamePlatform}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {selectedGame?.platforms?.map((gamePlatform: string) => (
+                  <option key={gamePlatform} value={gamePlatform}>
+                    {gamePlatform}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-2">
@@ -246,56 +330,43 @@ export default function AddGamePage() {
               </select>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Game Status <span className="text-red-500">*</span>
-                </Label>
+            <div className="space-y-2">
+              <Label>
+                Game Status <span className="text-red-500">*</span>
+              </Label>
 
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Playing",
-                    "Completed",
-                    "On Hold",
-                    "Dropped",
-                    "Backlog",
-                  ].map((statusOption) => (
+              <div className="flex flex-wrap gap-2">
+                {["Playing", "Completed", "On Hold", "Dropped", "Backlog"].map(
+                  (statusOption) => (
                     <Button
                       key={statusOption}
                       type="button"
-                      variant={
-                        playthroughStatus === statusOption
-                          ? "default"
-                          : "outline"
-                      }
-                      onClick={() => setPlaythroughStatus(statusOption)}
+                      variant={status === statusOption ? "default" : "outline"}
+                      onClick={() => setStatus(statusOption)}
                     >
                       {statusOption}
                     </Button>
-                  ))}
-                </div>
+                  )
+                )}
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="dateAdded">
-                  Date Added <span className="text-red-500">*</span>
-                </Label>
+            <div className="space-y-2">
+              <Label htmlFor="dateAdded">
+                Date Added <span className="text-red-500">*</span>
+              </Label>
 
-                <Input
-                  id="dateAdded"
-                  type="date"
-                  value={dateAdded}
-                  onChange={(event) => setDateAdded(event.target.value)}
-                />
-
-                <p className="text-text-secondary text-sm">
-                  This is when you're adding the game to your collection.
-                </p>
-              </div>
+              <Input
+                id="dateAdded"
+                type="date"
+                value={dateAdded}
+                onChange={(event) => setDateAdded(event.target.value)}
+              />
             </div>
           </div>
         </section>
 
+        {/* First Playthrough */}
         <section className="border-border bg-surface rounded-lg border p-4 md:p-6">
           <div className="flex items-start gap-3">
             <div className="bg-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-semibold">
@@ -322,10 +393,12 @@ export default function AddGamePage() {
                 className="border-border bg-background w-full rounded-md border px-3 py-2"
               >
                 <option value="Playing">Playing</option>
+
                 <option value="Completed">Completed</option>
+
                 <option value="On Hold">On Hold</option>
+
                 <option value="Dropped">Dropped</option>
-                <option value="Backlog">Backlog</option>
               </select>
             </div>
 
@@ -360,13 +433,12 @@ export default function AddGamePage() {
                 id="hoursPlayed"
                 type="number"
                 min="0"
+                step="0.25"
                 value={hoursPlayed}
                 onChange={(event) => setHoursPlayed(event.target.value)}
               />
             </div>
-          </div>
 
-          <div className="space-y-4">
             <div className="space-y-2">
               <Label>Rating</Label>
 
@@ -375,11 +447,11 @@ export default function AddGamePage() {
                   <button
                     key={star}
                     type="button"
-                    onClick={() => setRating(String(star))}
+                    onClick={() => setRating(star)}
                     className="text-2xl"
-                    aria-label={`Rate ${star} star${star > 1 ? "s" : ""}`}
+                    aria-label={`Rate ${star} stars`}
                   >
-                    {Number(rating) >= star ? "★" : "☆"}
+                    {rating >= star ? "★" : "☆"}
                   </button>
                 ))}
               </div>
@@ -482,8 +554,15 @@ export default function AddGamePage() {
         </div>
       </div>
 
+      {error && <p className="text-sm text-red-400">{error}</p>}
+
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <Button type="button" variant="outline" className="w-full sm:w-auto">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={() => router.push("/games")}
+        >
           Cancel
         </Button>
 
@@ -491,7 +570,7 @@ export default function AddGamePage() {
           type="button"
           className="w-full sm:w-auto"
           onClick={handleSaveGame}
-          disabled={isSaving || !selectedGame}
+          disabled={isSaving || !selectedGame || !platform}
         >
           {isSaving ? "Saving..." : "Save Game"}
         </Button>

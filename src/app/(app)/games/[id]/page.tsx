@@ -1,27 +1,53 @@
 import Link from "next/link"
+import { notFound, redirect } from "next/navigation"
 
-import { Button } from "@/components/ui/button"
+import prisma from "@/lib/prisma"
+import { createClient } from "@/lib/supabase/server"
 import DeleteGameDialog from "@/components/delete-game-dialog"
 
-import {
-  CalendarDays,
-  ChevronLeft,
-  Gamepad2,
-  Pencil,
-  Trash2,
-} from "lucide-react"
+import { CalendarDays, ChevronLeft, Gamepad2, Pencil } from "lucide-react"
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+function formatStatus(status: string) {
+  if (status === "ON_HOLD") {
+    return "On Hold"
+  }
+
+  return status.charAt(0) + status.slice(1).toLowerCase()
+}
+
+function formatDate(date: Date | null) {
+  if (!date) {
+    return "—"
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  })
+}
+
+function getStatusClasses(status: string) {
+  switch (status) {
+    case "PLAYING":
+      return "bg-green-900/50 text-green-300"
+
+    case "COMPLETED":
+      return "bg-blue-900/50 text-blue-300"
+
+    case "BACKLOG":
+      return "bg-orange-900/50 text-orange-300"
+
+    case "ON_HOLD":
+      return "bg-purple-900/50 text-purple-300"
+
+    case "DROPPED":
+      return "bg-red-900/50 text-red-300"
+
+    default:
+      return "bg-surface-light text-text-secondary"
+  }
+}
 
 export default async function GameDetailsPage({
   params,
@@ -30,26 +56,51 @@ export default async function GameDetailsPage({
 }) {
   const { id } = await params
 
-  const playthroughs = [
-    {
-      id: 2,
-      number: 2,
-      status: "Playing",
-      dateStarted: "Apr 12, 2025",
-      dateEnded: null,
-      hoursPlayed: 42,
-      rating: 5,
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login")
+  }
+
+  let userGameId: bigint
+
+  try {
+    userGameId = BigInt(id)
+  } catch {
+    notFound()
+  }
+
+  const userGame = await prisma.userGame.findFirst({
+    where: {
+      id: userGameId,
+      userId: user.id,
     },
-    {
-      id: 1,
-      number: 1,
-      status: "Completed",
-      dateStarted: "Jan 5, 2025",
-      dateEnded: "Mar 30, 2025",
-      hoursPlayed: 85,
-      rating: 5,
+    include: {
+      game: true,
+      platforms: true,
+      playThrough: {
+        orderBy: {
+          playthroughNumber: "desc",
+        },
+      },
     },
-  ]
+  })
+
+  if (!userGame) {
+    notFound()
+  }
+
+  const platform =
+    userGame.platforms.length > 0
+      ? userGame.platforms.map((item) => item.platform).join(", ")
+      : "No platform"
+
+  const playthroughs = userGame.playThrough
+
   return (
     <div className="space-y-6">
       {/* Back Link */}
@@ -63,35 +114,44 @@ export default async function GameDetailsPage({
 
       {/* Game Header */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-        {/* Game Info */}
         <div className="flex flex-col gap-4 sm:flex-row">
-          <img
-            src="https://media.rawg.io/media/games/b29/b294fdd866dcdb643e7bab370a552855.jpg"
-            alt="Elden Ring cover"
-            className="border-border h-64 w-44 rounded-lg border object-cover"
-          />
+          {userGame.game.imageUrl ? (
+            <img
+              src={userGame.game.imageUrl}
+              alt={`${userGame.game.title} cover`}
+              className="border-border h-64 w-44 rounded-lg border object-cover"
+            />
+          ) : (
+            <div className="border-border bg-surface-light h-64 w-44 rounded-lg border" />
+          )}
 
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">Elden Ring</h1>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {userGame.game.title}
+              </h1>
 
-              <span className="rounded-md bg-green-900/50 px-3 py-1 text-sm text-green-300">
-                Playing
+              <span
+                className={`rounded-md px-3 py-1 text-sm ${getStatusClasses(
+                  userGame.status
+                )}`}
+              >
+                {formatStatus(userGame.status)}
               </span>
             </div>
 
             <div className="text-text-secondary flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
                 <Gamepad2 className="h-4 w-4" />
-                <span>PS5</span>
+                <span>{platform}</span>
               </div>
 
-              <span>Action RPG</span>
+              <span>{userGame.genre ?? "No genre"}</span>
             </div>
 
             <div className="text-text-secondary flex items-center gap-2">
               <CalendarDays className="h-4 w-4" />
-              <span>Added: May 10, 2025</span>
+              <span>Added: {formatDate(userGame.dateAdded)}</span>
             </div>
           </div>
         </div>
@@ -106,11 +166,10 @@ export default async function GameDetailsPage({
             <span>Edit Game</span>
           </Link>
 
-          <DeleteGameDialog />
+          <DeleteGameDialog gameId={id} gameTitle={userGame.game.title} />
         </div>
       </div>
 
-      {/* Game Content */}
       <div className="grid gap-6 xl:grid-cols-3">
         {/* Playthrough History */}
         <section className="border-border bg-surface rounded-lg border p-4 md:p-6 xl:col-span-2">
@@ -131,149 +190,156 @@ export default async function GameDetailsPage({
             </Link>
           </div>
 
-          {/* Desktop Table */}
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full">
-              <thead>
-                <tr className="border-border text-text-secondary border-b text-left text-sm">
-                  <th className="px-3 py-3 font-medium">#</th>
+          {playthroughs.length === 0 ? (
+            <div className="border-border rounded-lg border border-dashed p-8 text-center">
+              <p className="font-medium">No playthroughs yet</p>
 
-                  <th className="px-3 py-3 font-medium">Status</th>
+              <p className="text-text-secondary mt-1 text-sm">
+                Add your first playthrough to start tracking progress.
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-border text-text-secondary border-b text-left text-sm">
+                      <th className="px-3 py-3 font-medium">#</th>
+                      <th className="px-3 py-3 font-medium">Status</th>
+                      <th className="px-3 py-3 font-medium">Started</th>
+                      <th className="px-3 py-3 font-medium">Ended</th>
+                      <th className="px-3 py-3 font-medium">Hours</th>
+                      <th className="px-3 py-3 font-medium">Rating</th>
+                      <th className="px-3 py-3 text-right font-medium">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
 
-                  <th className="px-3 py-3 font-medium">Started</th>
-
-                  <th className="px-3 py-3 font-medium">Ended</th>
-
-                  <th className="px-3 py-3 font-medium">Hours</th>
-
-                  <th className="px-3 py-3 font-medium">Rating</th>
-
-                  <th className="px-3 py-3 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {playthroughs.map((playthrough) => (
-                  <tr
-                    key={playthrough.id}
-                    className="border-border border-b last:border-b-0"
-                  >
-                    <td className="px-3 py-4">
-                      <span className="bg-primary text-primary-foreground rounded-md px-2 py-1 text-sm font-medium">
-                        #{playthrough.number}
-                      </span>
-                    </td>
-
-                    <td className="px-3 py-4">
-                      <span
-                        className={`rounded-md px-2 py-1 text-sm ${
-                          playthrough.status === "Playing"
-                            ? "bg-green-900/50 text-green-300"
-                            : "bg-blue-900/50 text-blue-300"
-                        }`}
+                  <tbody>
+                    {playthroughs.map((playthrough) => (
+                      <tr
+                        key={playthrough.id.toString()}
+                        className="border-border border-b last:border-b-0"
                       >
-                        {playthrough.status}
-                      </span>
-                    </td>
+                        <td className="px-3 py-4">
+                          <span className="bg-primary text-primary-foreground rounded-md px-2 py-1 text-sm font-medium">
+                            #{playthrough.playthroughNumber}
+                          </span>
+                        </td>
 
-                    <td className="px-3 py-4 text-sm">
-                      {playthrough.dateStarted}
-                    </td>
+                        <td className="px-3 py-4">
+                          <span
+                            className={`rounded-md px-2 py-1 text-sm ${getStatusClasses(
+                              playthrough.status
+                            )}`}
+                          >
+                            {formatStatus(playthrough.status)}
+                          </span>
+                        </td>
 
-                    <td className="px-3 py-4 text-sm">
-                      {playthrough.dateEnded ?? "—"}
-                    </td>
+                        <td className="px-3 py-4 text-sm">
+                          {formatDate(playthrough.dateStarted)}
+                        </td>
 
-                    <td className="px-3 py-4 text-sm">
-                      {playthrough.hoursPlayed} hrs
-                    </td>
+                        <td className="px-3 py-4 text-sm">
+                          {formatDate(playthrough.dateEnded)}
+                        </td>
 
-                    <td className="px-3 py-4 text-sm">
-                      <span>{"★".repeat(playthrough.rating)}</span>
-                      <span className="text-text-secondary">
-                        {"☆".repeat(5 - playthrough.rating)}
-                      </span>
-                    </td>
+                        <td className="px-3 py-4 text-sm">
+                          {playthrough.hoursPlayed?.toString() ?? "0"} hrs
+                        </td>
 
-                    <td className="px-3 py-4 text-right">
+                        <td className="px-3 py-4 text-sm">
+                          {playthrough.rating ? (
+                            <>
+                              <span>{"★".repeat(playthrough.rating)}</span>
+                              <span className="text-text-secondary">
+                                {"☆".repeat(5 - playthrough.rating)}
+                              </span>
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+
+                        <td className="px-3 py-4 text-right">
+                          <Link
+                            href={`/games/${id}/playthroughs/${playthrough.id.toString()}/edit`}
+                            className="border-border hover:bg-surface-light inline-flex rounded-md border px-3 py-1.5 text-sm"
+                          >
+                            Edit
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile */}
+              <div className="space-y-3 md:hidden">
+                {playthroughs.map((playthrough) => (
+                  <div
+                    key={playthrough.id.toString()}
+                    className="border-border bg-background rounded-lg border p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="bg-primary text-primary-foreground rounded-md px-2 py-1 text-sm font-medium">
+                          #{playthrough.playthroughNumber}
+                        </span>
+
+                        <span
+                          className={`rounded-md px-2 py-1 text-sm ${getStatusClasses(
+                            playthrough.status
+                          )}`}
+                        >
+                          {formatStatus(playthrough.status)}
+                        </span>
+                      </div>
+
                       <Link
-                        href={`/games/${id}/playthroughs/${playthrough.id}/edit`}
-                        className="border-border hover:bg-surface-light inline-flex rounded-md border px-3 py-1.5 text-sm"
+                        href={`/games/${id}/playthroughs/${playthrough.id.toString()}/edit`}
+                        className="border-border hover:bg-surface-light rounded-md border px-3 py-1.5 text-sm"
                       >
                         Edit
                       </Link>
-                    </td>
-                  </tr>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-text-secondary">Started</p>
+                        <p>{formatDate(playthrough.dateStarted)}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-text-secondary">Ended</p>
+                        <p>{formatDate(playthrough.dateEnded)}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-text-secondary">Hours</p>
+                        <p>{playthrough.hoursPlayed?.toString() ?? "0"} hrs</p>
+                      </div>
+
+                      <div>
+                        <p className="text-text-secondary">Rating</p>
+                        <p>
+                          {playthrough.rating
+                            ? `${"★".repeat(playthrough.rating)}${"☆".repeat(
+                                5 - playthrough.rating
+                              )}`
+                            : "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Cards */}
-          <div className="space-y-3 md:hidden">
-            {playthroughs.map((playthrough) => (
-              <div
-                key={playthrough.id}
-                className="border-border bg-background rounded-lg border p-4"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-primary text-primary-foreground rounded-md px-2 py-1 text-sm font-medium">
-                      #{playthrough.number}
-                    </span>
-
-                    <span
-                      className={`rounded-md px-2 py-1 text-sm ${
-                        playthrough.status === "Playing"
-                          ? "bg-green-900/50 text-green-300"
-                          : "bg-blue-900/50 text-blue-300"
-                      }`}
-                    >
-                      {playthrough.status}
-                    </span>
-                  </div>
-
-                  <Link
-                    href={`/games/${id}/playthroughs/${playthrough.id}/edit`}
-                    className="border-border hover:bg-surface-light rounded-md border px-3 py-1.5 text-sm"
-                  >
-                    Edit
-                  </Link>
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-text-secondary">Started</p>
-
-                    <p>{playthrough.dateStarted}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-text-secondary">Ended</p>
-
-                    <p>{playthrough.dateEnded ?? "—"}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-text-secondary">Hours</p>
-
-                    <p>{playthrough.hoursPlayed} hrs</p>
-                  </div>
-
-                  <div>
-                    <p className="text-text-secondary">Rating</p>
-
-                    <p>
-                      <span>{"★".repeat(playthrough.rating)}</span>
-                      <span className="text-text-secondary">
-                        {"☆".repeat(5 - playthrough.rating)}
-                      </span>
-                    </p>
-                  </div>
-                </div>
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </section>
 
         {/* Game Details */}
@@ -283,41 +349,42 @@ export default async function GameDetailsPage({
           <div className="mt-4 space-y-4">
             <div className="border-border flex items-center justify-between border-b pb-3">
               <span className="text-text-secondary">Platform</span>
-
-              <span>PS5</span>
+              <span>{platform}</span>
             </div>
 
             <div className="border-border flex items-center justify-between border-b pb-3">
               <span className="text-text-secondary">Genre</span>
-
-              <span>Action RPG</span>
+              <span>{userGame.genre ?? "—"}</span>
             </div>
 
             <div className="border-border flex items-center justify-between border-b pb-3">
               <span className="text-text-secondary">Status</span>
 
-              <span className="rounded-md bg-green-900/50 px-2 py-1 text-sm text-green-300">
-                Playing
+              <span
+                className={`rounded-md px-2 py-1 text-sm ${getStatusClasses(
+                  userGame.status
+                )}`}
+              >
+                {formatStatus(userGame.status)}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
               <span className="text-text-secondary">Date Added</span>
-
-              <span>May 10, 2025</span>
+              <span>{formatDate(userGame.dateAdded)}</span>
             </div>
           </div>
         </section>
       </div>
 
-      {/* Notes */}
-      <div className="border-border bg-background rounded-lg border p-4">
-        <h3 className="font-medium">Notes</h3>
+      {/* Notes from most recent playthrough */}
+      {playthroughs[0]?.notes && (
+        <div className="border-border bg-background rounded-lg border p-4">
+          <h3 className="font-medium">Notes</h3>
 
-        <p className="text-text-secondary mt-2">
-          Exploring Limgrave and just defeated Godrick!
-        </p>
-      </div>
+          <p className="text-text-secondary mt-2">{playthroughs[0].notes}</p>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 
 import {
@@ -14,9 +16,46 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export default function DeleteGameDialog() {
-  function handleDelete() {
-    console.log("Delete game")
+type DeleteGameDialogProps = {
+  gameId: string
+  gameTitle: string
+}
+
+export default function DeleteGameDialog({
+  gameId,
+  gameTitle,
+}: DeleteGameDialogProps) {
+  const router = useRouter()
+
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleDelete() {
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`/api/games/${gameId}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+
+        throw new Error(data.error ?? "Failed to delete game")
+      }
+
+      router.push("/games")
+      router.refresh()
+    } catch (error) {
+      console.error("Delete game failed:", error)
+
+      setError(
+        error instanceof Error ? error.message : "Failed to delete game."
+      )
+
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -28,7 +67,7 @@ export default function DeleteGameDialog() {
 
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Elden Ring?</AlertDialogTitle>
+          <AlertDialogTitle>Delete {gameTitle}?</AlertDialogTitle>
 
           <AlertDialogDescription>
             This will remove the game and its playthrough history from your
@@ -36,14 +75,20 @@ export default function DeleteGameDialog() {
           </AlertDialogDescription>
         </AlertDialogHeader>
 
+        {error && <p className="text-sm text-red-400">{error}</p>}
+
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
 
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={handleDelete}
+            onClick={(event) => {
+              event.preventDefault()
+              handleDelete()
+            }}
+            disabled={isDeleting}
           >
-            Delete Game
+            {isDeleting ? "Deleting..." : "Delete Game"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

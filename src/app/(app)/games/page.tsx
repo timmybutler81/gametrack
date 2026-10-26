@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { games } from "@/data/games"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
@@ -12,6 +11,19 @@ import {
   ListFilter,
   Pencil,
 } from "lucide-react"
+
+type GameRow = {
+  id: string
+  title: string
+  developer: string | null
+  image: string | null
+  platform: string
+  genre: string | null
+  status: string
+  playthroughNumber: number | null
+  hoursPlayed: string | null
+  dateAdded: string
+}
 
 function getStatusClasses(status: string) {
   switch (status) {
@@ -37,11 +49,62 @@ function getStatusClasses(status: string) {
 
 export default function GamesPage() {
   const [selectedStatus, setSelectedStatus] = useState("All")
+  const [games, setGames] = useState<GameRow[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadGames() {
+      try {
+        const response = await fetch("/api/games")
+
+        if (!response.ok) {
+          throw new Error("Failed to load games")
+        }
+
+        const data = await response.json()
+
+        const mappedGames: GameRow[] = data.map((userGame: any) => ({
+          id: userGame.id,
+          title: userGame.game.title,
+          developer: userGame.game.developer,
+          image: userGame.game.imageUrl,
+          platform: userGame.platforms?.[0]?.platform ?? "Unknown",
+          genre: userGame.genre,
+          status:
+            userGame.status === "ON_HOLD"
+              ? "On Hold"
+              : userGame.status.charAt(0) +
+                userGame.status.slice(1).toLowerCase(),
+          playthroughNumber:
+            userGame.playthroughs?.[0]?.playthroughNumber ?? null,
+          hoursPlayed: userGame.playthroughs?.[0]?.hoursPlayed ?? null,
+          dateAdded: new Date(userGame.dateAdded).toLocaleDateString(),
+        }))
+
+        setGames(mappedGames)
+      } catch (error) {
+        console.error("Failed to load games:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadGames()
+  }, [])
 
   const filteredGames =
     selectedStatus === "All"
       ? games
       : games.filter((game) => game.status === selectedStatus)
+
+  const counts = {
+    all: games.length,
+    playing: games.filter((game) => game.status === "Playing").length,
+    backlog: games.filter((game) => game.status === "Backlog").length,
+    completed: games.filter((game) => game.status === "Completed").length,
+    onHold: games.filter((game) => game.status === "On Hold").length,
+    dropped: games.filter((game) => game.status === "Dropped").length,
+  }
 
   return (
     <div className="space-y-6">
@@ -63,42 +126,42 @@ export default function GamesPage() {
             variant={selectedStatus === "All" ? "default" : "outline"}
             onClick={() => setSelectedStatus("All")}
           >
-            All (24)
+            All ({counts.all})
           </Button>
 
           <Button
             variant={selectedStatus === "Playing" ? "default" : "outline"}
             onClick={() => setSelectedStatus("Playing")}
           >
-            Playing (6)
+            Playing ({counts.playing})
           </Button>
 
           <Button
             variant={selectedStatus === "Backlog" ? "default" : "outline"}
             onClick={() => setSelectedStatus("Backlog")}
           >
-            Backlog (7)
+            Backlog ({counts.backlog})
           </Button>
 
           <Button
             variant={selectedStatus === "Completed" ? "default" : "outline"}
             onClick={() => setSelectedStatus("Completed")}
           >
-            Completed (8)
+            Completed ({counts.completed})
           </Button>
 
           <Button
             variant={selectedStatus === "On Hold" ? "default" : "outline"}
             onClick={() => setSelectedStatus("On Hold")}
           >
-            On Hold (2)
+            On Hold ({counts.onHold})
           </Button>
 
           <Button
             variant={selectedStatus === "Dropped" ? "default" : "outline"}
             onClick={() => setSelectedStatus("Dropped")}
           >
-            Dropped (1)
+            Dropped ({counts.dropped})
           </Button>
         </div>
 
@@ -161,7 +224,12 @@ export default function GamesPage() {
                       )}
 
                       <div>
-                        <p className="font-medium">{game.title}</p>
+                        <Link
+                          href={`/games/${game.id}`}
+                          className="hover:text-primary font-medium hover:underline"
+                        >
+                          {game.title}
+                        </Link>
 
                         <p className="text-text-secondary text-sm">
                           {game.developer}
@@ -217,13 +285,21 @@ export default function GamesPage() {
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-2">
                         <Button size="icon">
-                          <Link href={`/games/${game.id}`}>
+                          <Link
+                            href={`/games/${game.id}`}
+                            aria-label={`Open ${game.title}`}
+                            title={`Open ${game.title}`}
+                          >
                             <ChartNoAxesColumnIncreasing className="h-4 w-4" />
                           </Link>
                         </Button>
 
                         <Button size="icon">
-                          <Link href={`/games/${game.id}/edit`}>
+                          <Link
+                            href={`/games/${game.id}/edit`}
+                            aria-label={`Edit ${game.title}`}
+                            title={`Edit ${game.title}`}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Link>
                         </Button>
@@ -238,24 +314,8 @@ export default function GamesPage() {
           {/* Desktop Pagination */}
           <div className="border-border flex items-center justify-between border-t px-4 py-4">
             <p className="text-text-secondary text-sm">
-              Showing 1 to 8 of 24 games
+              Showing {filteredGames.length} of {games.length} games
             </p>
-
-            <div className="flex items-center gap-2">
-              <Button size="sm">1</Button>
-
-              <Button size="sm" variant="outline">
-                2
-              </Button>
-
-              <Button size="sm" variant="outline">
-                3
-              </Button>
-
-              <Button size="sm" variant="outline">
-                &gt;
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -280,7 +340,12 @@ export default function GamesPage() {
               )}
 
               <div className="min-w-0 flex-1">
-                <h3 className="truncate font-semibold">{game.title}</h3>
+                <Link
+                  href={`/games/${game.id}`}
+                  className="hover:text-primary font-medium hover:underline"
+                >
+                  {game.title}
+                </Link>
 
                 <p className="text-text-secondary text-sm">{game.developer}</p>
 
@@ -330,13 +395,23 @@ export default function GamesPage() {
 
               <div className="flex gap-2">
                 <Button size="icon">
-                  <Link href={`/games/${game.id}`}>
+                  <Link
+                    href={`/games/${game.id}`}
+                    aria-label={`Open ${game.title}`}
+                    title={`Open ${game.title}`}
+                  >
                     <ChartNoAxesColumnIncreasing className="h-4 w-4" />
                   </Link>
                 </Button>
 
-                <Button size="icon" variant="outline">
-                  <MoreVertical className="h-4 w-4" />
+                <Button size="icon">
+                  <Link
+                    href={`/games/${game.id}/edit`}
+                    aria-label={`Edit ${game.title}`}
+                    title={`Edit ${game.title}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -344,26 +419,10 @@ export default function GamesPage() {
         ))}
 
         {/* Mobile Pagination */}
-        <div className="flex flex-col gap-3 pt-2">
+        <div className="pt-2">
           <p className="text-text-secondary text-center text-sm">
-            Showing 1 to 8 of 24 games
+            Showing {filteredGames.length} of {games.length} games
           </p>
-
-          <div className="flex justify-center gap-2">
-            <Button size="sm">1</Button>
-
-            <Button size="sm" variant="outline">
-              2
-            </Button>
-
-            <Button size="sm" variant="outline">
-              3
-            </Button>
-
-            <Button size="sm" variant="outline">
-              &gt;
-            </Button>
-          </div>
         </div>
       </div>
     </div>

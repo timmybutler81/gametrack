@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 
 import {
@@ -14,9 +16,51 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-export default function DeletePlaythroughDialog() {
-  function handleDelete() {
-    console.log("Delete game")
+type DeletePlaythroughDialogProps = {
+  gameId: string
+  playthroughId: string
+  playthroughNumber: number
+}
+
+export default function DeletePlaythroughDialog({
+  gameId,
+  playthroughId,
+  playthroughNumber,
+}: DeletePlaythroughDialogProps) {
+  const router = useRouter()
+
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleDelete() {
+    setIsDeleting(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `/api/games/${gameId}/playthroughs/${playthroughId}`,
+        {
+          method: "DELETE",
+        }
+      )
+
+      if (!response.ok) {
+        const data = await response.json()
+
+        throw new Error(data.error ?? "Failed to delete playthrough")
+      }
+
+      router.push(`/games/${gameId}`)
+      router.refresh()
+    } catch (error) {
+      console.error("Delete playthrough failed:", error)
+
+      setError(
+        error instanceof Error ? error.message : "Failed to delete playthrough."
+      )
+
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -28,22 +72,30 @@ export default function DeletePlaythroughDialog() {
 
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Playthrough?</AlertDialogTitle>
+          <AlertDialogTitle>
+            Delete Playthrough #{playthroughNumber}?
+          </AlertDialogTitle>
 
           <AlertDialogDescription>
-            This will remove the playthrough history from your library. This
-            action cannot be undone.
+            This will permanently remove this playthrough from your library.
+            This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
+        {error && <p className="text-sm text-red-400">{error}</p>}
+
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
 
           <AlertDialogAction
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={handleDelete}
+            onClick={(event) => {
+              event.preventDefault()
+              handleDelete()
+            }}
+            disabled={isDeleting}
           >
-            Delete Playthrough
+            {isDeleting ? "Deleting..." : "Delete Playthrough"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
