@@ -1,78 +1,94 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
 
-const playHistory = [
-  {
-    game: "Elden Ring",
-    platform: "PS5",
-    genre: "Action RPG",
-    activity: "Played 4 hours",
-    date: "Sep 26, 2026",
-  },
-  {
-    game: "Final Fantasy VII Rebirth",
-    platform: "PS5",
-    genre: "RPG",
-    activity: "Played 3 hours",
-    date: "Sep 24, 2026",
-  },
-  {
-    game: "The Witcher 3",
-    platform: "PC",
-    genre: "RPG",
-    activity: "Completed playthrough",
-    date: "Sep 21, 2026",
-  },
-  {
-    game: "Baldur's Gate 3",
-    platform: "PC",
-    genre: "RPG",
-    activity: "Played 2 hours",
-    date: "Sep 18, 2026",
-  },
-]
+type Playthrough = {
+  id: string
+  playthroughNumber: number
+  platform: string
+  status: string
+  dateStarted: string | null
+  dateEnded: string | null
+  hoursPlayed: string | null
+  rating: number | null
+  achievementsSupported: boolean
+  achievementsCompleted: number
+  achievementsTotal: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
 
-const monthlyPlayTime = [
-  { label: "May", value: 42 },
-  { label: "Jun", value: 58 },
-  { label: "Jul", value: 36 },
-  { label: "Aug", value: 64 },
-  { label: "Sep", value: 30 },
-]
+type UserGame = {
+  id: string
+  genre: string | null
+  status: string
+  dateAdded: string
+  game: {
+    id: string
+    title: string
+  }
+  platforms: {
+    id: string
+    platform: string
+  }[]
+  playthroughs: Playthrough[]
+}
 
-const weeklyPlayTime = [
-  { label: "Week 1", value: 8 },
-  { label: "Week 2", value: 14 },
-  { label: "Week 3", value: 6 },
-  { label: "Week 4", value: 11 },
-]
+type HistoryEntry = {
+  id: string
+  userGameId: string
+  game: string
+  platform: string
+  genre: string
+  status: string
+  hours: number
+  rating: number | null
+  date: Date
+  dateStarted: string | null
+  dateEnded: string | null
+  playthroughNumber: number
+}
 
-const dateRangeStats = {
-  "Last 30 Days": {
-    totalPlayTime: 30,
-    gamesPlayed: 4,
-    gamesCompleted: 1,
-    averageRating: 4.7,
-  },
-  "Last 90 Days": {
-    totalPlayTime: 94,
-    gamesPlayed: 7,
-    gamesCompleted: 2,
-    averageRating: 4.6,
-  },
-  "This Year": {
-    totalPlayTime: 230,
-    gamesPlayed: 12,
-    gamesCompleted: 4,
-    averageRating: 4.6,
-  },
-  "All Time": {
-    totalPlayTime: 412,
-    gamesPlayed: 24,
-    gamesCompleted: 8,
-    averageRating: 4.5,
-  },
+function formatStatus(status: string) {
+  if (status === "ON_HOLD") {
+    return "On Hold"
+  }
+
+  return status.charAt(0) + status.slice(1).toLowerCase()
+}
+
+function getRangeStart(dateRange: string) {
+  const now = new Date()
+
+  if (dateRange === "Last 30 Days") {
+    const start = new Date(now)
+    start.setDate(start.getDate() - 30)
+    return start
+  }
+
+  if (dateRange === "Last 90 Days") {
+    const start = new Date(now)
+    start.setDate(start.getDate() - 90)
+    return start
+  }
+
+  if (dateRange === "This Year") {
+    return new Date(now.getFullYear(), 0, 1)
+  }
+
+  return null
+}
+
+function getWeekStart(date: Date) {
+  const result = new Date(date)
+  const day = result.getDay()
+
+  result.setDate(result.getDate() - day)
+  result.setHours(0, 0, 0, 0)
+
+  return result
 }
 
 export default function HistoryPage() {
@@ -80,20 +96,245 @@ export default function HistoryPage() {
   const [groupBy, setGroupBy] = useState("Month")
   const [selectedGame, setSelectedGame] = useState("All Games")
   const [selectedGenre, setSelectedGenre] = useState("All Genres")
+  const [games, setGames] = useState<UserGame[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const stats = dateRangeStats[dateRange as keyof typeof dateRangeStats]
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const response = await fetch("/api/history")
 
-  const filteredHistory = playHistory.filter((entry) => {
-    const matchesGame =
-      selectedGame === "All Games" || entry.game === selectedGame
+        if (!response.ok) {
+          throw new Error("Failed to load history.")
+        }
 
-    const matchesGenre =
-      selectedGenre === "All Genres" || entry.genre === selectedGenre
+        const data = await response.json()
+        setGames(data)
+      } catch (loadError) {
+        console.error("Failed to load history:", loadError)
+        setError("Unable to load history and analytics.")
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-    return matchesGame && matchesGenre
-  })
+    loadHistory()
+  }, [])
 
-  const chartData = groupBy === "Week" ? weeklyPlayTime : monthlyPlayTime
+  const allHistory = useMemo<HistoryEntry[]>(() => {
+    return games.flatMap((userGame) =>
+      userGame.playthroughs.map((playthrough) => {
+        const activityDate = new Date(
+          playthrough.dateEnded ??
+            playthrough.dateStarted ??
+            playthrough.updatedAt
+        )
+
+        return {
+          id: playthrough.id,
+          userGameId: userGame.id,
+          game: userGame.game.title,
+          platform:
+            playthrough.platform ??
+            userGame.platforms[0]?.platform ??
+            "Unknown",
+          genre: userGame.genre ?? "Uncategorized",
+          status: playthrough.status,
+          hours: Number(playthrough.hoursPlayed ?? 0),
+          rating: playthrough.rating,
+          date: activityDate,
+          dateStarted: playthrough.dateStarted,
+          dateEnded: playthrough.dateEnded,
+          playthroughNumber: playthrough.playthroughNumber,
+        }
+      })
+    )
+  }, [games])
+
+  const rangeHistory = useMemo(() => {
+    const start = getRangeStart(dateRange)
+
+    if (!start) {
+      return allHistory
+    }
+
+    return allHistory.filter((entry) => entry.date >= start)
+  }, [allHistory, dateRange])
+
+  const filteredHistory = useMemo(() => {
+    return rangeHistory
+      .filter((entry) => {
+        const matchesGame =
+          selectedGame === "All Games" || entry.game === selectedGame
+
+        const matchesGenre =
+          selectedGenre === "All Genres" || entry.genre === selectedGenre
+
+        return matchesGame && matchesGenre
+      })
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [rangeHistory, selectedGame, selectedGenre])
+
+  const gameOptions = useMemo(
+    () =>
+      [...games]
+        .map((game) => game.game.title)
+        .sort((a, b) => a.localeCompare(b)),
+    [games]
+  )
+
+  const genreOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          games
+            .map((game) => game.genre)
+            .filter((genre): genre is string => Boolean(genre))
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+    [games]
+  )
+
+  const totalPlayTime = filteredHistory.reduce(
+    (total, entry) => total + entry.hours,
+    0
+  )
+
+  const gamesPlayed = new Set(filteredHistory.map((entry) => entry.userGameId))
+    .size
+
+  const gamesCompleted = new Set(
+    filteredHistory
+      .filter((entry) => entry.status === "COMPLETED")
+      .map((entry) => entry.userGameId)
+  ).size
+
+  const ratings = filteredHistory
+    .map((entry) => entry.rating)
+    .filter((rating): rating is number => rating !== null)
+
+  const averageRating =
+    ratings.length > 0
+      ? ratings.reduce((total, rating) => total + rating, 0) / ratings.length
+      : 0
+
+  const statusData = [
+    {
+      label: "Playing",
+      value: games.filter((game) => game.status === "PLAYING").length,
+    },
+    {
+      label: "Backlog",
+      value: games.filter((game) => game.status === "BACKLOG").length,
+    },
+    {
+      label: "Completed",
+      value: games.filter((game) => game.status === "COMPLETED").length,
+    },
+    {
+      label: "On Hold",
+      value: games.filter((game) => game.status === "ON_HOLD").length,
+    },
+    {
+      label: "Dropped",
+      value: games.filter((game) => game.status === "DROPPED").length,
+    },
+  ]
+
+  const maxStatusValue = Math.max(...statusData.map((item) => item.value), 1)
+
+  const genreHours = filteredHistory.reduce<Record<string, number>>(
+    (result, entry) => {
+      result[entry.genre] = (result[entry.genre] ?? 0) + entry.hours
+
+      return result
+    },
+    {}
+  )
+
+  const topGenres = Object.entries(genreHours)
+    .map(([label, hours]) => ({
+      label,
+      hours,
+    }))
+    .sort((a, b) => b.hours - a.hours)
+    .slice(0, 5)
+
+  const maxGenreHours = Math.max(...topGenres.map((genre) => genre.hours), 1)
+
+  const chartData = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        label: string
+        date: Date
+        value: number
+      }
+    >()
+
+    filteredHistory.forEach((entry) => {
+      let groupDate: Date
+      let key: string
+      let label: string
+
+      if (groupBy === "Week") {
+        groupDate = getWeekStart(entry.date)
+
+        key = groupDate.toISOString().slice(0, 10)
+
+        label = groupDate.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        })
+      } else {
+        groupDate = new Date(entry.date.getFullYear(), entry.date.getMonth(), 1)
+
+        key = `${groupDate.getFullYear()}-${groupDate.getMonth()}`
+
+        label = groupDate.toLocaleDateString(undefined, {
+          month: "short",
+          year: "2-digit",
+        })
+      }
+
+      const existing = grouped.get(key)
+
+      if (existing) {
+        existing.value += entry.hours
+      } else {
+        grouped.set(key, {
+          label,
+          date: groupDate,
+          value: entry.hours,
+        })
+      }
+    })
+
+    return Array.from(grouped.values())
+      .sort((a, b) => a.date.getTime() - b.date.getTime())
+      .slice(-8)
+  }, [filteredHistory, groupBy])
+
+  const maxChartValue = Math.max(...chartData.map((item) => item.value), 1)
+
+  if (isLoading) {
+    return (
+      <div className="text-text-secondary">
+        Loading history and analytics...
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="border-border bg-surface rounded-xl border p-6">
+        <h1 className="text-2xl font-bold">History & Analytics</h1>
+
+        <p className="mt-4 text-red-400">{error}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -146,10 +387,10 @@ export default function HistoryPage() {
               className="border-border bg-background w-full rounded-md border px-3 py-2"
             >
               <option>All Games</option>
-              <option>Elden Ring</option>
-              <option>The Witcher 3</option>
-              <option>Final Fantasy VII Rebirth</option>
-              <option>Baldur&apos;s Gate 3</option>
+
+              {gameOptions.map((game) => (
+                <option key={game}>{game}</option>
+              ))}
             </select>
           </div>
 
@@ -162,8 +403,10 @@ export default function HistoryPage() {
               className="border-border bg-background w-full rounded-md border px-3 py-2"
             >
               <option>All Genres</option>
-              <option>Action RPG</option>
-              <option>RPG</option>
+
+              {genreOptions.map((genre) => (
+                <option key={genre}>{genre}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -174,31 +417,35 @@ export default function HistoryPage() {
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Total Play Time</p>
 
-          <p className="mt-2 text-3xl font-bold">{stats.totalPlayTime} hrs</p>
+          <p className="mt-2 text-3xl font-bold">
+            {Math.round(totalPlayTime * 10) / 10} hrs
+          </p>
         </div>
 
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Games Played</p>
 
-          <p className="mt-2 text-3xl font-bold">{stats.gamesPlayed}</p>
+          <p className="mt-2 text-3xl font-bold">{gamesPlayed}</p>
         </div>
 
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Games Completed</p>
 
-          <p className="mt-2 text-3xl font-bold">{stats.gamesCompleted}</p>
+          <p className="mt-2 text-3xl font-bold">{gamesCompleted}</p>
         </div>
 
         <div className="border-border bg-surface rounded-xl border p-5">
           <p className="text-text-secondary text-sm">Average Rating</p>
 
-          <p className="mt-2 text-3xl font-bold">{stats.averageRating}</p>
+          <p className="mt-2 text-3xl font-bold">
+            {averageRating > 0 ? averageRating.toFixed(1) : "—"}
+          </p>
         </div>
       </section>
 
       {/* Main Analytics */}
       <section className="grid gap-6 xl:grid-cols-2">
-        {/* Play Time Over Time */}
+        {/* Play Time */}
         <div className="border-border bg-surface rounded-xl border p-6">
           <div className="mb-6">
             <h2 className="text-lg font-semibold">Play Time Over Time</h2>
@@ -208,29 +455,38 @@ export default function HistoryPage() {
             </p>
           </div>
 
-          <div className="flex h-72 items-end gap-4">
-            {chartData.map((item) => (
-              <div
-                key={item.label}
-                className="flex flex-1 flex-col items-center justify-end gap-2"
-              >
-                <span className="text-text-secondary text-xs">
-                  {item.value}h
-                </span>
-
+          {chartData.length === 0 ? (
+            <div className="text-text-secondary flex h-72 items-center justify-center text-sm">
+              No playthrough data for the selected filters.
+            </div>
+          ) : (
+            <div className="flex h-72 items-end gap-3">
+              {chartData.map((item) => (
                 <div
-                  className="bg-primary w-full rounded-t-md"
-                  style={{
-                    height: `${item.value * 3}px`,
-                  }}
-                />
+                  key={`${item.label}-${item.date.toISOString()}`}
+                  className="flex min-w-0 flex-1 flex-col items-center justify-end gap-2"
+                >
+                  <span className="text-text-secondary text-xs">
+                    {Math.round(item.value * 10) / 10}h
+                  </span>
 
-                <span className="text-text-secondary text-xs">
-                  {item.label}
-                </span>
-              </div>
-            ))}
-          </div>
+                  <div
+                    className="bg-primary min-h-1 w-full rounded-t-md"
+                    style={{
+                      height: `${Math.max(
+                        (item.value / maxChartValue) * 200,
+                        4
+                      )}px`,
+                    }}
+                  />
+
+                  <span className="text-text-secondary text-center text-xs">
+                    {item.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Games by Status */}
@@ -244,16 +500,15 @@ export default function HistoryPage() {
           </div>
 
           <div className="space-y-5">
-            {[
-              { label: "Playing", value: 6 },
-              { label: "Backlog", value: 7 },
-              { label: "Completed", value: 8 },
-              { label: "On Hold", value: 2 },
-              { label: "Dropped", value: 1 },
-            ].map((item) => (
+            {statusData.map((item) => (
               <div key={item.label} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>{item.label}</span>
+                  <Link
+                    href={`/games?status=${encodeURIComponent(item.label)}`}
+                    className="hover:text-primary hover:underline"
+                  >
+                    {item.label}
+                  </Link>
 
                   <span className="text-text-secondary">{item.value}</span>
                 </div>
@@ -262,7 +517,7 @@ export default function HistoryPage() {
                   <div
                     className="bg-primary h-full rounded-full"
                     style={{
-                      width: `${(item.value / 8) * 100}%`,
+                      width: `${(item.value / maxStatusValue) * 100}%`,
                     }}
                   />
                 </div>
@@ -284,32 +539,34 @@ export default function HistoryPage() {
             </p>
           </div>
 
-          <div className="space-y-5">
-            {[
-              { label: "RPG", hours: 92 },
-              { label: "Action RPG", hours: 68 },
-              { label: "Action Adventure", hours: 42 },
-              { label: "Roguelike", hours: 18 },
-              { label: "Simulation", hours: 10 },
-            ].map((genre) => (
-              <div key={genre.label} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{genre.label}</span>
+          {topGenres.length === 0 ? (
+            <p className="text-text-secondary text-sm">
+              No genre play data for the selected filters.
+            </p>
+          ) : (
+            <div className="space-y-5">
+              {topGenres.map((genre) => (
+                <div key={genre.label} className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{genre.label}</span>
 
-                  <span className="text-text-secondary">{genre.hours} hrs</span>
-                </div>
+                    <span className="text-text-secondary">
+                      {Math.round(genre.hours * 10) / 10} hrs
+                    </span>
+                  </div>
 
-                <div className="bg-background h-2 overflow-hidden rounded-full">
-                  <div
-                    className="bg-primary h-full rounded-full"
-                    style={{
-                      width: `${(genre.hours / 92) * 100}%`,
-                    }}
-                  />
+                  <div className="bg-background h-2 overflow-hidden rounded-full">
+                    <div
+                      className="bg-primary h-full rounded-full"
+                      style={{
+                        width: `${(genre.hours / maxGenreHours) * 100}%`,
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Recent Play History */}
@@ -328,23 +585,33 @@ export default function HistoryPage() {
                 No play history matches the selected filters.
               </div>
             ) : (
-              filteredHistory.map((entry) => (
-                <div
-                  key={`${entry.game}-${entry.date}`}
-                  className="border-border bg-background flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+              filteredHistory.slice(0, 10).map((entry) => (
+                <Link
+                  key={entry.id}
+                  href={`/games/${entry.userGameId}`}
+                  className="border-border bg-background hover:border-primary flex flex-col gap-3 rounded-lg border p-4 transition sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="font-medium">{entry.game}</p>
 
                     <p className="text-text-secondary mt-1 text-sm">
-                      {entry.platform} · {entry.activity}
+                      {entry.platform} · Playthrough #{entry.playthroughNumber}{" "}
+                      · {formatStatus(entry.status)}
+                    </p>
+
+                    <p className="text-text-secondary mt-1 text-sm">
+                      {entry.hours} hours played
                     </p>
                   </div>
 
                   <span className="text-text-secondary text-sm">
-                    {entry.date}
+                    {entry.date.toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </span>
-                </div>
+                </Link>
               ))
             )}
           </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
@@ -48,7 +49,25 @@ function getStatusClasses(status: string) {
 }
 
 export default function GamesPage() {
-  const [selectedStatus, setSelectedStatus] = useState("All")
+  const searchParams = useSearchParams()
+
+  const requestedStatus = searchParams.get("status")
+
+  const validStatuses = [
+    "Playing",
+    "Backlog",
+    "Completed",
+    "On Hold",
+    "Dropped",
+  ]
+
+  const initialStatus =
+    requestedStatus && validStatuses.includes(requestedStatus)
+      ? requestedStatus
+      : "All"
+
+  const [selectedStatus, setSelectedStatus] = useState(initialStatus)
+
   const [games, setGames] = useState<GameRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
