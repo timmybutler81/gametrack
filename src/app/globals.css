@@ -4,11 +4,79 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  /* =========================
-     GameTrack Custom Colors
-     ========================= */
+/* =========================
+   LIGHT THEME
+   ========================= */
 
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+
+  --surface: #ffffff;
+  --surface-light: #f1f5f9;
+
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+
+  --primary: #7c3aed;
+  --primary-foreground: #ffffff;
+
+  --border: #cbd5e1;
+
+  /* shadcn Component Colors */
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #ede9fe;
+  --accent-foreground: #0f172a;
+
+  --destructive: #ef4444;
+
+  --input: #cbd5e1;
+  --ring: #7c3aed;
+
+  /* Charts */
+
+  --chart-1: #7c3aed;
+  --chart-2: #8b5cf6;
+  --chart-3: #a78bfa;
+  --chart-4: #6366f1;
+  --chart-5: #4f46e5;
+
+  /* Radius */
+
+  --radius: 0.625rem;
+
+  /* Sidebar */
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+
+  --sidebar-primary: #7c3aed;
+  --sidebar-primary-foreground: #ffffff;
+
+  --sidebar-accent: #f1f5f9;
+  --sidebar-accent-foreground: #0f172a;
+
+  --sidebar-border: #cbd5e1;
+  --sidebar-ring: #7c3aed;
+}
+
+/* =========================
+   DARK THEME
+   ========================= */
+
+.dark {
   --background: #08111f;
   --foreground: #f8fafc;
 
@@ -22,10 +90,6 @@
   --primary-foreground: #ffffff;
 
   --border: #263244;
-
-  /* =========================
-     shadcn Component Colors
-     ========================= */
 
   --card: #111c2c;
   --card-foreground: #f8fafc;
@@ -47,25 +111,11 @@
   --input: #263244;
   --ring: #7c3aed;
 
-  /* =========================
-     Charts
-     ========================= */
-
   --chart-1: #7c3aed;
   --chart-2: #8b5cf6;
   --chart-3: #a78bfa;
   --chart-4: #6366f1;
   --chart-5: #4f46e5;
-
-  /* =========================
-     Radius
-     ========================= */
-
-  --radius: 0.625rem;
-
-  /* =========================
-     Sidebar
-     ========================= */
 
   --sidebar: #111c2c;
   --sidebar-foreground: #f8fafc;
@@ -142,9 +192,14 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Date picker icon */
+
 input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
   cursor: pointer;
+}
+
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
 }
 
 @layer base {

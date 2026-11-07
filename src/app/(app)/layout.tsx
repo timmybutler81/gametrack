@@ -1,9 +1,9 @@
 import AppSidebar from "@/components/app-sidebar"
+import ThemeToggle from "@/components/theme-toggle"
+
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import prisma from "@/lib/prisma"
-
-import { Bell, Moon } from "lucide-react"
 
 export default async function AppLayout({
   children,
@@ -11,9 +11,9 @@ export default async function AppLayout({
   children: React.ReactNode
 }>) {
   const supabase = await createClient()
+
   const {
     data: { user },
-    error,
   } = await supabase.auth.getUser()
 
   if (!user) {
@@ -62,22 +62,8 @@ export default async function AppLayout({
             />
           </div>
 
-          <div className="ml-4 flex items-center gap-2">
-            <button
-              type="button"
-              className="border-border hover:bg-surface-light rounded-md border p-2"
-              aria-label="Notifications"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
-
-            <button
-              type="button"
-              className="border-border hover:bg-surface-light rounded-md border p-2"
-              aria-label="Toggle theme"
-            >
-              <Moon className="h-5 w-5" />
-            </button>
+          <div className="ml-4 flex items-center">
+            <ThemeToggle />
           </div>
         </header>
 

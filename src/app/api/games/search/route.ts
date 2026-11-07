@@ -1,38 +1,90 @@
 import { NextRequest, NextResponse } from "next/server"
 import { searchRawgGames } from "@/lib/rawg"
 
+function createManualGameId(title: string) {
+  const normalizedTitle = title.trim().toLowerCase()
+
+  let hash = 0
+
+  for (let index = 0; index < normalizedTitle.length; index++) {
+    hash = Math.imul(31, hash) + normalizedTitle.charCodeAt(index)
+
+    hash |= 0
+  }
+
+  const unsignedHash = hash >>> 0
+
+  // RAWG IDs are positive.
+  // Manual GameTrack fallback IDs are negative.
+  return -((unsignedHash % 2_000_000_000) + 1)
+}
+
+function createManualFallback(title: string) {
+  return {
+    id: createManualGameId(title),
+
+    name: title.trim(),
+
+    developer: null,
+
+    image: null,
+
+    released: null,
+
+    platforms: [
+      "PC",
+      "PS5",
+      "PS4",
+      "Xbox Series X|S",
+      "Xbox One",
+      "Nintendo Switch",
+    ],
+
+    genres: [
+      "Action",
+      "Adventure",
+      "RPG",
+      "Shooter",
+      "Strategy",
+      "Simulation",
+      "Sports",
+      "Racing",
+      "Platformer",
+      "Puzzle",
+      "Fighting",
+      "Roguelike",
+      "Other",
+    ],
+
+    manual: true,
+  }
+}
+
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams
-  const query = searchParams.get("q")
+  const { searchParams } = new URL(request.url)
+
+  const query = searchParams.get("q")?.trim()
 
   if (!query) {
     return NextResponse.json(
-      { error: "Search query is required" },
-      { status: 400 }
+      {
+        error: "Search query is required.",
+      },
+      {
+        status: 400,
+      }
     )
   }
 
   try {
-    const data = await searchRawgGames(query)
-
-    const games = data.results.map((game: any) => ({
-      id: game.id,
-      name: game.name,
-      image: game.background_image,
-      released: game.released,
-
-      platforms: game.platforms?.map((item: any) => item.platform.name) ?? [],
-
-      genres: game.genres?.map((genre: any) => genre.name) ?? [],
-    }))
+    const games = await searchRawgGames(query)
 
     return NextResponse.json(games)
   } catch (error) {
-    console.error(error)
+    console.error("RAWG search unavailable. Using manual fallback:", error)
 
-    return NextResponse.json(
-      { error: "Unable to search games" },
-      { status: 500 }
-    )
+    const manualGame = createManualFallback(query)
+
+    return NextResponse.json([manualGame])
   }
 }

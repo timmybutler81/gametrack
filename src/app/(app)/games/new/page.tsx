@@ -47,21 +47,38 @@ export default function AddGamePage() {
     }
 
     setIsSearching(true)
+    setError(null)
 
     try {
       const response = await fetch(
-        `/api/games/search?q=${encodeURIComponent(searchTerm)}`
+        `/api/games/search?q=${encodeURIComponent(searchTerm.trim())}`
       )
 
-      if (!response.ok) {
-        throw new Error("Search failed")
+      const responseText = await response.text()
+
+      let data
+
+      try {
+        data = responseText ? JSON.parse(responseText) : null
+      } catch {
+        throw new Error(`Search returned invalid response: ${responseText}`)
       }
 
-      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(
+          data?.error ?? `Search failed with status ${response.status}`
+        )
+      }
 
-      setSearchResults(data)
-    } catch (error) {
-      console.error("Game search failed:", error)
+      setSearchResults(data ?? [])
+    } catch (searchError) {
+      console.error("Game search failed:", searchError)
+
+      setError(
+        searchError instanceof Error
+          ? searchError.message
+          : "Game search failed."
+      )
     } finally {
       setIsSearching(false)
     }
@@ -233,6 +250,14 @@ export default function AddGamePage() {
               {isSearching ? "Searching..." : "Search Games"}
             </Button>
 
+            {searchResults.some((game) => game.manual) && (
+              <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+                RAWG is currently unavailable. GameTrack has switched to manual
+                entry mode. You can still add the game, but cover art and
+                external game metadata are unavailable.
+              </div>
+            )}
+
             {searchResults.length > 0 && (
               <div className="mt-4 space-y-2">
                 {searchResults.map((game) => (
@@ -253,10 +278,20 @@ export default function AddGamePage() {
                     )}
 
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium">{game.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{game.name}</p>
+
+                        {game.manual && (
+                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">
+                            Manual
+                          </span>
+                        )}
+                      </div>
 
                       <p className="text-text-secondary text-sm">
-                        {game.released || "Release date unavailable"}
+                        {game.manual
+                          ? "Manual entry"
+                          : game.released || "Release date unavailable"}
                       </p>
 
                       <p className="text-text-secondary mt-1 text-sm">
